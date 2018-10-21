@@ -2,9 +2,11 @@
 using AspNetCore.Identity.PG.Stores;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System;
 using WebExample.Models;
 using WebExample.Services;
 using IdentityRole = AspNetCore.Identity.PG.IdentityRole;
@@ -28,16 +30,41 @@ namespace WebExample
                 .AddRoleStore<RoleStore<IdentityRole>>()
                 .AddRoleManager<RoleManager<IdentityRole>>()
                     .AddDefaultTokenProviders();
+            // Configure Identity
+            services.Configure<IdentityOptions>(options =>
+            {
+                // Password settings
+                options.Password.RequireDigit = true;
+                options.Password.RequiredLength = 6;
+                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequireUppercase = false;
+                options.Password.RequireLowercase = false;
 
+                // Lockout settings
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromSeconds(20);
+                options.Lockout.MaxFailedAccessAttempts = 10;
+
+                // User settings
+                options.User.RequireUniqueEmail = true;
+            });
             // Add application services.
             services.AddTransient<IEmailSender, EmailSender>();
             IdentityDbConfig.StringConnectionName = "DefaultCon";
 
-            services.AddAuthentication().AddFacebook(facebookOptions =>
+            services.AddAuthentication()
+
+                 .AddCookie(o => o.LoginPath = new PathString("/logout"))
+
+                .AddFacebook(facebookOptions =>
             {
                 facebookOptions.AppId = Configuration["Authentication:Facebook:AppId"];
                 facebookOptions.AppSecret = Configuration["Authentication:Facebook:AppSecret"];
-            });
+            }).AddGoogle(googleOptions =>
+           {
+               googleOptions.ClientId = Configuration["Authentication:Google:ClientId"];
+               googleOptions.ClientSecret = Configuration["Authentication:Google:ClientSecret"];
+           });
+            services.ConfigureApplicationCookie(options => options.ExpireTimeSpan = TimeSpan.FromSeconds(30));
             services.AddMvc();
             //services.AddSingleton(_ => Configuration);
         }

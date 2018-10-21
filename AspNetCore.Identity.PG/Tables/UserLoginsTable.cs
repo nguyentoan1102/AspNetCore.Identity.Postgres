@@ -90,10 +90,10 @@ namespace AspNetCore.Identity.PG.Tables
             Dictionary<string, object> parameters = new Dictionary<string, object>();
             parameters.Add("loginProvider", userLogin.LoginProvider);
             parameters.Add("providerKey", userLogin.ProviderKey);
-            var guid = (string)_database.ExecuteQueryGetSingleObject(commandText, parameters);
+            var guid = _database.ExecuteQueryGetSingleObject(commandText, parameters);
             if (guid != null)
             {
-                return new Guid(guid);
+                return new Guid(guid.ToString());
             }
             return new Guid();
         }

@@ -1,31 +1,32 @@
-﻿using System;
+﻿using AspNetCore.Identity.PG.Context;
+using AspNetCore.Identity.PG.Tables;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
-using AspNetCore.Identity.PG.Context;
-using AspNetCore.Identity.PG.Tables;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Configuration;
-
 
 namespace AspNetCore.Identity.PG.Stores
 {
     /// <summary>
     /// Class that implements the key ASP.NET Identity user store interfaces
     /// </summary>
-    public class UserStore<TUser> : IUserLoginStore<TUser>,
-        IUserRoleStore<TUser>,
-        IUserClaimStore<TUser>,
-        IUserPasswordStore<TUser>,
-        IUserSecurityStampStore<TUser>,
-        IUserEmailStore<TUser>,
-        IUserLockoutStore<TUser>,
-        IUserPhoneNumberStore<TUser>,
-        IQueryableUserStore<TUser>,
-        IUserTwoFactorStore<TUser> where TUser : IdentityUser
+    //public class UserStore<TUser> : IUserLoginStore<TUser>,
+    //    IUserRoleStore<TUser>,
+    //    IUserClaimStore<TUser>,
+    //    IUserPasswordStore<TUser>,
+    //    IUserSecurityStampStore<TUser>,
+    //    IUserEmailStore<TUser>,
+    //    IUserLockoutStore<TUser>,
+    //    IUserPhoneNumberStore<TUser>,
+    //    IQueryableUserStore<TUser>,
+    //    IUserTwoFactorStore<TUser> where TUser : IdentityUser
+    public class UserStore<TUser> : IUserLoginStore<TUser>, IUserEmailStore<TUser>, IUserPasswordStore<TUser>, IUserLockoutStore<TUser>,
+    IQueryableUserStore<TUser> where TUser : IdentityUser
     {
         private readonly UserTable<TUser> _userTable;
         private readonly RoleTable<IdentityRole> _roleTable;
@@ -34,13 +35,9 @@ namespace AspNetCore.Identity.PG.Stores
         private readonly UserLoginsTable _userLoginsTable;
         private readonly PostgreSQLDatabase _database;
 
-
         /// <summary>
         /// Default constructor that initializes a new PostgreSQLDatabase instance using the Default Connection string.
         /// </summary>
-
-
-
 
         /// <summary>
         /// Constructor that takes a IConfiguration as argument.
@@ -62,7 +59,7 @@ namespace AspNetCore.Identity.PG.Stores
         /// Gets or sets the <see cref="IdentityErrorDescriber"/> for any error that occurred with the current operation.
         /// </summary>
         public IdentityErrorDescriber ErrorDescriber { get; set; }
-        
+
         /// <summary>
         /// Gets the user identifier for the specified <paramref name="user"/>.
         /// </summary>
@@ -190,17 +187,17 @@ namespace AspNetCore.Identity.PG.Stores
             user.ConcurrencyStamp = Guid.NewGuid().ToString();
             await Task.Run(() =>
             {
-                _userTable.Update(user);  
+                _userTable.Update(user);
             }, cancellationToken);
-            
-           /* try
-            {
-                await SaveChanges(cancellationToken);
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                return IdentityResult.Failed(ErrorDescriber.ConcurrencyFailure());
-            }*/
+
+            /* try
+             {
+                 await SaveChanges(cancellationToken);
+             }
+             catch (DbUpdateConcurrencyException)
+             {
+                 return IdentityResult.Failed(ErrorDescriber.ConcurrencyFailure());
+             }*/
             return IdentityResult.Success;
         }
 
@@ -222,7 +219,7 @@ namespace AspNetCore.Identity.PG.Stores
             {
                 _userTable.Delete(user);
             }, cancellationToken);
-            
+
             return IdentityResult.Success;
         }
 
@@ -238,11 +235,10 @@ namespace AspNetCore.Identity.PG.Stores
         {
             cancellationToken.ThrowIfCancellationRequested();
             ThrowIfDisposed();
-            
+
             return _userTable.GetUserByIdAsync(new Guid(userId));
         }
 
- 
         /// <summary>
         /// Finds and returns a user, if any, who has the specified normalized user name.
         /// </summary>
@@ -255,9 +251,10 @@ namespace AspNetCore.Identity.PG.Stores
         {
             cancellationToken.ThrowIfCancellationRequested();
             ThrowIfDisposed();
-            return _userTable.GetUserByNameAsync(normalizedUserName);
+            var users = _userTable.GetUserByNameAsync(normalizedUserName);
+            return users;
         }
-        
+
         /// <summary>
         /// Sets the password hash for a user.
         /// </summary>
@@ -381,10 +378,11 @@ namespace AspNetCore.Identity.PG.Stores
             {
                 throw new ArgumentNullException(nameof(user));
             }
-            var list = new List<string>();
+            List<string> list = null;
             await Task.Run(() =>
             {
-                list = _userRolesTable.FindByUserId(user.Id);
+                // list = _userRolesTable.FindByUserId(user.Id);
+                list = new List<string>();
 
             }, cancellationToken);
             return list;
@@ -423,7 +421,7 @@ namespace AspNetCore.Identity.PG.Stores
                     result = _userRolesTable.GetRoleExistsInUser(userId, roleId);
                 }
             }, cancellationToken);
-        
+
             return result;
         }
 
@@ -444,7 +442,6 @@ namespace AspNetCore.Identity.PG.Stores
         }
 
         //Todo Implement cache for UserClaims, userRoles, userLogins to not need it all this hits in a database
-       
 
         /// <summary>
         /// Get the claims associated with the specified <paramref name="user"/> as an asynchronous operation.
@@ -469,7 +466,6 @@ namespace AspNetCore.Identity.PG.Stores
                 return null;
             return list.Claims.ToList();
         }
-      
 
         /// <summary>
         /// Adds the <paramref name="claim"/> given to the specified <paramref name="user"/>.
@@ -550,7 +546,7 @@ namespace AspNetCore.Identity.PG.Stores
                     _userClaimsTable.Delete(user, claim);
                 }
             }, cancellationToken);
-            
+
         }
 
         /// <summary>
@@ -605,7 +601,7 @@ namespace AspNetCore.Identity.PG.Stores
             {
                 _userLoginsTable.Delete(user, new UserLoginInfo(loginProvider, providerKey, ""));
             }, cancellationToken);
-            
+
             //Todo need to be tested
         }
 
@@ -654,7 +650,7 @@ namespace AspNetCore.Identity.PG.Stores
             {
                 user = _userTable.GetUserById(_userLoginsTable.FindUserIdByLogin(new UserLoginInfo(loginProvider, providerKey, "")));
             }, cancellationToken);
-            
+
             return user;
         }
 
@@ -1093,9 +1089,8 @@ namespace AspNetCore.Identity.PG.Stores
             {
                 list = _userClaimsTable.FindUsersByClaim(claim);
             }, cancellationToken);
-            
 
-            return (IList<TUser>) list;
+            return (IList<TUser>)list;
         }
 
         /// <summary>
@@ -1119,15 +1114,15 @@ namespace AspNetCore.Identity.PG.Stores
             {
                 list = _roleTable.GetUsersInRole(roleName);
             }, cancellationToken);
-            
-            return (IList<TUser>) list;
+
+            return (IList<TUser>)list;
         }
 
-        Task<IList<Claim>> IUserClaimStore<TUser>.GetClaimsAsync(TUser user, CancellationToken cancellationToken)
-        {
-            return GetClaimsAsync(user, cancellationToken);
-        }
+        //Task<IList<Claim>> IUserClaimStore<TUser>.GetClaimsAsync(TUser user, CancellationToken cancellationToken)
+        //{
+        //    return GetClaimsAsync(user, cancellationToken);
+        //}
 
         public IQueryable<TUser> Users { get; }
     }
-}    
+}
